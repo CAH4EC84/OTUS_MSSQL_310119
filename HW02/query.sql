@@ -71,7 +71,9 @@ order by OrderID desc
 
 --6. Все ид и имена клиентов и их контактные телефоны, которые покупали товар Chocolate frogs 250g
 
+
 Select DISTINCT
+    Cust.CustomerID,
 	CUST.CustomerName,
 	Cust.PhoneNumber
 FROM [WideWorldImporters].[Sales].[Customers] CUST 
@@ -79,3 +81,4 @@ FROM [WideWorldImporters].[Sales].[Customers] CUST
 	JOIN[WideWorldImporters].[Sales].[OrderLines] LINE on ORD.OrderID = LINE.OrderID
 	JOIN [WideWorldImporters].[Warehouse].[StockItems] ITEM on LINE.StockItemID = ITEM.StockItemID
 WHERE StockItemName = 'Chocolate frogs 250g'
+order by CUST.CustomerName
