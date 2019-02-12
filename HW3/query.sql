@@ -92,13 +92,39 @@ EXEC sp_configure 'xp_cmdshell', 1; RECONFIGURE; EXEC sp_configure;
 -t field_term 
 	Specifies the field terminator. The default is \t (tab character)
 -T option (trusted connection)
--w Performs the bulk copy operation using Unicode characters
+-c Performs the operation using a character data type.
 -S server_name [\instance_name] 
--d database_name
 bcp in | out | queryout
 */
-DECLARE @query as VARCHAR(1000) = 'Select [Continent],COUNT([CountryName]) as CountyCount FROM [WideWorldImporters].[Application].[Countries] GROUP BY [Continent] Order by [Continent]'
-DECLARE @bcp as VARCHAR(2000) = 'bcp "'+@query+'" queryout D:\Golikov_A_S\LearningMSSQL\CountyCount.txt -T -w -t -S DBOPER -d WideWorldImporters'
-exec master..xp_cmdshell @bcp
+
+DECLARE @query as VARCHAR(1000) = 'Select [Continent],COUNT([CountryName]) as CountyCount FROM [WideWorldImporters].[Application].[Countries] GROUP BY [Continent] Order by [Continent]';
+DECLARE @filePath as VARCHAR(255) = 'D:\Golikov_A_S\LearningMSSQL\CountyCount.txt';
+DECLARE @bcpQueryOut as VARCHAR(2000) = 'bcp "'+@query+'" queryout "'+@FilePath+ '" -T -S DBOPER -c';
+exec master..xp_cmdshell @bcpQueryOut
+
+--Создаем пустую таблицу для импорта
+--Select [Continent],COUNT([CountryName]) as CountyCount Into [WideWorldImporters].[Application].[CountriesCount]FROM [WideWorldImporters].[Application].[Countries] where 1=0 GROUP BY [Continent] Order by [Continent]
+TRUNCATE TABLE [WideWorldImporters].[Application].[CountriesCount]
+
+DECLARE @tableIn NVARCHAR(max) = '[WideWorldImporters].[Application].[CountriesCount]'
+DECLARE @filePath as VARCHAR(255) = 'D:\Golikov_A_S\LearningMSSQL\CountyCount.txt';
+DECLARE @bcpIn as VARCHAR(2000) = 'bcp "'+@tableIn+'" IN "'+@filePath+ '" -T -S DBOPER -c';
+
+exec master..xp_cmdshell @bcpIn
+Select * from [WideWorldImporters].[Application].[CountriesCount]
 
 
+--Bulk Insert 
+TRUNCATE TABLE [WideWorldImporters].[Application].[CountriesCount]
+	BULK INSERT [WideWorldImporters].[Application].[CountriesCount]
+				   FROM "D:\Golikov_A_S\LearningMSSQL\CountyCount.txt"
+				   WITH 
+					 (
+						BATCHSIZE = 2, 
+						DATAFILETYPE = 'char',
+						FIELDTERMINATOR = '\t',
+						ROWTERMINATOR ='\n',
+						KEEPNULLS,
+						TABLOCK        
+					  );
+Select * from [WideWorldImporters].[Application].[CountriesCount]
