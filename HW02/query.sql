@@ -63,20 +63,19 @@ WHERE PUR.IsOrderFinalized = 1
 Select TOP (10)
 	ORD.OrderDate,
 	WORK.FullName as Worker,
-	CLI.FullName as Client
+	CUST.CustomerName as Client
 FROM [WideWorldImporters].[Sales].[Orders] ORD
 	JOIN [WideWorldImporters].[Application].[People] WORK on ORD.SalespersonPersonID = WORK.PersonID 
-	JOIN [WideWorldImporters].[Application].[People] CLI on ORD.ContactPersonID = CLI.PersonID
+	JOIN [WideWorldImporters].[Sales].[Customers] CUST on ORD.CustomerId = CUST.CustomerID
 order by OrderID desc
 
 --6. Все ид и имена клиентов и их контактные телефоны, которые покупали товар Chocolate frogs 250g
 
 Select DISTINCT
-	PEOP.PersonID,
-	PEOP.FullName,
-	PEOP.PhoneNumber
-FROM [WideWorldImporters].[Application].[People] PEOP
-	JOIN [WideWorldImporters].[Sales].[Orders] ORD on PEOP.PersonID = ORD.ContactPersonID
+	CUST.CustomerName,
+	Cust.PhoneNumber
+FROM [WideWorldImporters].[Sales].[Customers] CUST 
+	JOIN [WideWorldImporters].[Sales].[Orders] ORD on ORD.CustomerId = CUST.CustomerID
 	JOIN[WideWorldImporters].[Sales].[OrderLines] LINE on ORD.OrderID = LINE.OrderID
 	JOIN [WideWorldImporters].[Warehouse].[StockItems] ITEM on LINE.StockItemID = ITEM.StockItemID
 WHERE StockItemName = 'Chocolate frogs 250g'
