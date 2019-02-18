@@ -1,4 +1,9 @@
---1. Довставлять в базу 5 записей используя insert в таблицу Customers или Suppliers
+--1. Довставлять в базу 5 записей используя insert в таблицу Customers или Suppliers. 
+
+DECLARE @tmpTable as TABLE ([CustomerID] INT);	 --Иды этих записей сохраняем в временную таблицу для последующего удаления \ обновления.
+
+DELETE FROM [WideWorldImporters].[Sales].[Customers] where [CustomerID] > 1061
+
 Insert Into [WideWorldImporters].[Sales].[Customers] (
 	[CustomerID],
 	[CustomerName], 
@@ -23,6 +28,7 @@ Insert Into [WideWorldImporters].[Sales].[Customers] (
 	[PostalPostalCode],
 	[LastEditedBy]
 	)
+OUTPUT INSERTED.[CustomerID] INTO @tmpTable
 Values 
 ( NEXT VALUE FOR Sequences.CustomerID, 'Alexander' , 
 	1,1,1,1,1,19586,19586, GETDATE(),1,1,1,1,'1-11','1-111','www.1.com','address1','111','111','111',1),
@@ -34,21 +40,32 @@ Values
 	4,4,4,4,4,19589,19589, GETDATE(),4,4,4,4,'4-44','4-444','www.4.com','address4','444','444','444',4),
 ( NEXT VALUE FOR Sequences.CustomerID, 'Argronom' , 
 	5,5,5,5,5,19585,19585, GETDATE(),5,5,5,5,'5-55','5-555','www.5.com','address5','555','555','555',5)
-
 --2. Удалите 1 запись из Customers, которая была вами добавлена
 
 DELETE 
 from [WideWorldImporters].[Sales].[Customers]
-WHERE [WideWorldImporters].[Sales].[Customers].CustomerId  in (1077)
+WHERE [WideWorldImporters].[Sales].[Customers].CustomerId  in (select top 1 CustomerId from @tmpTable order by CustomerId )
+
+SELECT * FROM [WideWorldImporters].[Sales].[Customers] where [CustomerID] > 1061
 
 --3. Изменить одну запись, из добавленных через UPDATE
 UPDATE [WideWorldImporters].[Sales].[Customers]
 SET [WideWorldImporters].[Sales].[Customers].[CustomerName] = [CustomerName] + ' - Updated'
-WHERE [WideWorldImporters].[Sales].[Customers].CustomerId in (1076)
+WHERE [WideWorldImporters].[Sales].[Customers].CustomerId in (select top 3 CustomerId from @tmpTable order by CustomerId)
 
+SELECT [CustomerID],[CustomerName] FROM [WideWorldImporters].[Sales].[Customers] where [CustomerID] > 1061
 
 --4. Написать MERGE, который вставит запись в клиенты, если ее там нет, и изменит если она уже есть
 --структура таблиц [CustomersHW3] идентична [Customer]  содержит данные из инсерта, но с парой отличных идов [CustomerID]
+IF OBJECT_ID(N'[WideWorldImporters].[Sales].[CustomersHW3]') IS NOT NULL DROP TABLE [WideWorldImporters].[Sales].[CustomersHW3]
+SELECT * 
+into [WideWorldImporters].[Sales].[CustomersHW3] 
+FROM [WideWorldImporters].[Sales].[Customers] 
+where [CustomerID] in (select CustomerId from @tmpTable)
+UPDATE top (2) [WideWorldImporters].[Sales].[CustomersHW3]  set  CustomerId = CustomerId + 1000
+
+
+
 BEGIN TRAN
 
 MERGE [WideWorldImporters].[Sales].[Customers] as TARGET
@@ -73,14 +90,14 @@ WHEN NOT MATCHED
 		[DeliveryCityID],[PostalCityID],[AccountOpenedDate],[StandardDiscountPercentage],[IsStatementSent],[IsOnCreditHold],[PaymentDays], 
 		[PhoneNumber],[FaxNumber],[WebsiteURL],[DeliveryAddressLine1],[DeliveryPostalCode],[PostalAddressLine1],[PostalPostalCode],[LastEditedBy])
 	VALUES (
-		[CustomerName], [BillToCustomerID], [CustomerCategoryID], [PrimaryContactPersonID], [AlternateContactPersonID], [DeliveryMethodID], 
+		[CustomerName]+' NEW RECORD', [BillToCustomerID], [CustomerCategoryID], [PrimaryContactPersonID], [AlternateContactPersonID], [DeliveryMethodID], 
 		[DeliveryCityID],[PostalCityID],[AccountOpenedDate],[StandardDiscountPercentage],[IsStatementSent],[IsOnCreditHold],[PaymentDays], 
 		[PhoneNumber],[FaxNumber],[WebsiteURL],[DeliveryAddressLine1],[DeliveryPostalCode],[PostalAddressLine1],[PostalPostalCode],[LastEditedBy])
 OUTPUT deleted.*, $action, inserted.*;
 
 --ROLLBACK TRAN
 COMMIT TRAN
-	
+Select * from 	[WideWorldImporters].[Sales].[Customers] where CustomerID > 1061
 
 --5. Напишите запрос, который выгрузит данные через bcp out и загрузить через bulk insert
 /* Конфигурируем сервер для отображения расширенных настроек.
