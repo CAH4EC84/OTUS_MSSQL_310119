@@ -59,10 +59,9 @@ from (--Покупатель и фактический получатель за
 		Select OrderID  
 		from Sales.OrderLines 
 		where StockItemID in (--три самые дорогии позиции
-			Select TOP 3 StockItemID
+			Select TOP 3 StockItemID	
 			from Warehouse.StockItems 
-			group by StockItemID 
-			order by max(UnitPrice) desc
+			order by UnitPrice desc
 		)
 	)
 ) as CustomerIdPickerId 
