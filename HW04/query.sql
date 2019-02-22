@@ -73,10 +73,9 @@ order by Cities.CityID
 
 --CTE
 ;WITH MaxPrice as (
-	Select TOP 3 StockItemID
-		from Warehouse.StockItems 
-		group by StockItemID 
-		order by max(UnitPrice) desc
+	Select TOP 3 StockItemID	
+	from Warehouse.StockItems 
+	order by UnitPrice desc
 )
 Select DISTINCT Cities.CityID,Cities.CityName,P.FullName
 FROM Sales.OrderLines OL 
