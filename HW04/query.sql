@@ -5,10 +5,10 @@
 Select FullName 
 from [Application].[People]
 where IsSalesperson = 1 
-	and NOT EXISTS  (Select SalespersonPersonID FROM [Sales].Orders)
+	and NOT EXISTS  (Select DISTINCT SalespersonPersonID FROM [Sales].Invoices)
 
 ;WITH SalersCTE (pid) as (
-	Select DISTINCT  SalespersonPersonID FROM [Sales].Orders
+	Select DISTINCT  SalespersonPersonID FROM [Sales].Invoices
 ) 
 Select FullName 
 from Application.People 
@@ -77,21 +77,16 @@ order by Cities.CityID
 		from Warehouse.StockItems 
 		group by StockItemID 
 		order by max(UnitPrice) desc
-),
-orderWithMaxPriceItems as (
-	Select OrderID  
-		from Sales.OrderLines  join MaxPrice on  Sales.OrderLines.StockItemID = MaxPrice.StockItemID
-),
-CustomersPickers as (
-	Select DISTINCT CustomerID,PickedByPersonID 
-	from Sales.Orders  join orderWithMaxPriceItems on Sales.Orders.OrderID = orderWithMaxPriceItems.OrderID
 )
 Select DISTINCT Cities.CityID,Cities.CityName,P.FullName
-FROM CustomersPickers
-JOIN Sales.Customers C on CustomersPickers.CustomerID = C.CustomerID
-JOIN Application.People P on CustomersPickers.PickedByPersonID = P.PersonID
-JOIN Application.Cities on C.DeliveryCityID = Cities.CityID
+FROM Sales.OrderLines OL 
+	JOIN MaxPrice on OL.StockItemID = MaxPrice.StockItemID
+	JOIN Sales.Orders O on OL.OrderID = O.OrderID
+	JOIN Sales.Customers C on O.CustomerID = C.CustomerID
+	JOIN Application.People P on O.PickedByPersonID = P.PersonID
+	JOIN Application.Cities on C.DeliveryCityID = Cities.CityID
 order by Cities.CityID
+
 
 
 --5. Объясните, что делает и оптимизируйте запрос
@@ -132,8 +127,8 @@ ORDER BY TotalSumm DESC
 	4) Общая сумма накладной -> TotalSummByInvoice (JOIN)
 	5) Фактическая сумма ЗАБРАННЫХ (PickingCompletedWhen IS NOT NULL) позиций из заказа SUM(OrderLines.PickedQuantity*OrderLines.UnitPrice) -> TotalSummForPickedItems (вложенный в Select)
 
-Выносим в CTE список подходящих накладных выбираем полный набор полей из Invoces + InvocesLines ,
-что бы при первом взгляде сразу были понятны исходные данные.
+Выносим в CTE список подходящих накладных выбираем полный набор полей из Invoces + InvocesLines , что бы при первом взгляде сразу были понятны исходные данные.
+
 
 ;With 
 InvoicesInfo (InvoiceId,OrderID,InvoiceDate,SalespersonPersonID,TotalSumm) as (
@@ -158,7 +153,7 @@ join Application.People on People.PersonID = InvoicesInfo.SalespersonPersonID
 join TotalSummForPickedItems on TotalSummForPickedItems.OrderID = InvoicesInfo.OrderID
 
 Быстродействие становится меньше чем исходный запрос.
-Для того что бы не гонять CTE по кругу формируем временную таблицу для наших данных из InvoicesInfo
+Для того что бы не гонять CTE по кругу формируем временную таблицу формируем временную таблицу для наших данных из InvoicesInfo
 */
 
 
