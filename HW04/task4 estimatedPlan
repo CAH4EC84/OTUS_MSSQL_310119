@@ -1,4 +1,4 @@
---WITH CTE
+** --WITH CTE**
 
 StmtTextStmtText
   |--Hash Match(Inner Join, HASH:([I].[OrderID])=([I].[OrderID]), RESIDUAL:([WideWorldImporters].[Sales].[Invoices].[OrderID] as [I].[OrderID]=[WideWorldImporters].[Sales].[Invoices].[OrderID] as [I].[OrderID])DEFINE:([Opt_Bitmap1034]))
@@ -28,7 +28,7 @@ StmtTextStmtText
             |                        |--Index Scan(OBJECT:([WideWorldImporters].[Sales].[InvoiceLines].[NCCX_Sales_InvoiceLines] AS [L]),  WHERE:(PROBE([Opt_Bitmap1027],[WideWorldImporters].[Sales].[InvoiceLines].[InvoiceID] as [L].[InvoiceID])))
             |--Clustered Index Seek(OBJECT:([WideWorldImporters].[Application].[People].[PK_Application_People]), SEEK:([WideWorldImporters].[Application].[People].[PersonID]=[WideWorldImporters].[Sales].[Invoices].[SalespersonPersonID] as [I].[SalespersonPersonID]) ORDERED FORWARD)
             
-  --WITH ##TMP_TABLE
+  ** --WITH ##TMP_TABLE**
             StmtText
   |--Parallelism(Gather Streams)
        |--Table Insert(OBJECT:([##TMP_InvoicesInfo]), SET:([##TMP_InvoicesInfo].[InvoiceId] = [WideWorldImporters].[Sales].[Invoices].[InvoiceID] as [I].[InvoiceID],[##TMP_InvoicesInfo].[OrderID] = [WideWorldImporters].[Sales].[Invoices].[OrderID] as [I].[OrderID],[##TMP_InvoicesInfo].[InvoiceDate] = [WideWorldImporters].[Sales].[Invoices].[InvoiceDate] as [I].[InvoiceDate],[##TMP_InvoicesInfo].[SalespersonPersonID] = [WideWorldImporters].[Sales].[Invoices].[SalespersonPersonID] as [I].[SalespersonPersonID],[##TMP_InvoicesInfo].[TotalSumm] = [Expr1005]))
