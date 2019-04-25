@@ -106,10 +106,6 @@ GO
 EXEC sp_addextendedproperty @name = N'MS_Description', @value = N'Импортируемые подписки (на данный момент XML)', @level0type = N'SCHEMA', @level0name = N'subscriptions';
 GO
 
-EXEC sp_addextendedproperty @name = N'MS_Description', @value = N'Заголовки документов.', @level0type = N'SCHEMA', @level0name = N'orders', @level1type = N'TABLE', @level1name = N'heads';
-GO
-
-
 /*Созадем таблицы для БД*/
 
 -- ************************************** [subscriptions].[importedData]
