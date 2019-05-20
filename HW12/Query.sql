@@ -89,6 +89,19 @@ from [Warehouse].[StockItems] a
 Order by [@Name]
 FOR XML PATH('Item'), ROOT('StockItems')
 
+--Альтернативный вариант с TYPE
+SELECT  StockItemName as '@Name',
+	SupplierID,
+	UnitPackageID as 'Package/UnitPackageID',
+	OuterPackageID as 'Package/OuterPackageID',
+	QuantityPerOuter as 'Package/QuantityPerOuter',
+	TypicalWeightPerUnit as 'Package/TypicalWeightPerUnit',
+	LeadTimeDays,
+	IsChillerStock,
+	TaxRate,
+	UnitPrice
+FROM Warehouse.StockItems FOR XML PATH('Item'), ELEMENTS, ROOT('StockItems'), TYPE;
+
 /*
 3) В таблице StockItems в колонке CustomFields есть данные в json.
 Написать select для вывода:
@@ -169,5 +182,23 @@ Set @query ='Select FORMAT(PivotTable.InvDate, ''dd.MM.yyyy'' ),'
 Select @query
 exec(@query)
 
+--Альтернативный вариант
+--DECLARE @query nvarchar(MAX)
+SET @query = N'
+SELECT * 
+FROM (
+   SELECT 
+       (FORMAT(DATEFROMPARTS(YEAR(i.InvoiceDate), MONTH(i.InvoiceDate), 1), ''dd.MM.yyyy'')) as InvoiceMonth,
+       CustomerName,
+       i.InvoiceID
+   FROM Sales.Invoices as i
+   JOIN Sales.Customers as c on c.CustomerID = i.CustomerID
+) as tbl
+PIVOT (
+   COUNT(InvoiceID)
+   FOR [CustomerName] IN ( '+substring(@firmsString,1,len(@firmsString)-1) +')
+) as pvt
+ORDER BY InvoiceMonth; '
 
+EXEC (@query)
 
