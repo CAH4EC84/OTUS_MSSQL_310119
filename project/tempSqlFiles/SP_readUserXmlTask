@@ -1,0 +1,61 @@
+--Процедура вызывается в цикле, получая путь к файлу запроса отчета пользователя.
+
+USE [otusProject]
+GO
+/****** Object:  StoredProcedure [dbo].[SP_readUserXmlTask]    Script Date: 03.06.2019 16:17:03 ******/
+SET ANSI_NULLS ON
+GO
+SET QUOTED_IDENTIFIER ON
+GO
+-- =============================================
+-- Author:		<Author,,Name>
+-- Create date: <Create Date,,>
+-- Description:	<Description,,>
+-- =============================================
+ALTER PROCEDURE [dbo].[SP_readUserXmlTask]
+	@path nvarchar(255) = 'D:\Golikov_A_S\LearningMSSQL\OTUS\project\ReportPatterns\pattern.xml'
+	-- Add the parameters for the stored procedure here
+AS
+BEGIN
+
+--SELECT @path AS filePath;
+--EXEC [dbo].[SP_readUserXmlTask] 'd:\Golikov_A_S\LearningMSSQL\OTUS\project\Alexander\request.xml'
+DECLARE @sql NVARCHAR(MAX);
+
+SET @sql = '
+DECLARE @xmlDocument AS XML;
+SET @xmlDocument = (SELECT * FROM OPENROWSET (BULK ''' + @path + ''',SINGLE_BLOB) as X);
+
+DECLARE @docHandle int
+EXEC sp_xml_preparedocument @docHandle OUTPUT, @xmlDocument
+
+
+IF (
+	(SELECT * FROM OPENXML (@docHandle,''/report'',3) 	WITH ([genarateReport] int) ) = 1 
+	
+	AND 
+	
+	(SELECT id FROM [otusProject].[reports].usersReportsTask 
+	WHERE [requestId] IN  (SELECT * FROM OPENXML (@docHandle,''/report'',3) 	WITH ([requestId] nvarchar(255))
+	)) IS NULL
+)
+	WITH CTE_addTask AS (
+	Select parsedXML.*
+		FROM (
+		SELECT * FROM OPENXML (@docHandle,''/report'',3) 
+			WITH (
+			[genarateReport] int,
+			[requestId] nvarchar(255),
+			[userId] int,
+			[reportId] int
+		) ) as parsedXML
+)
+INSERT INTO [otusProject].[reports].usersReportsTask (userId,reportId,[requestId],recState,taskDetails)
+SELECT cat.userId,cat.[reportId],cat.[requestId],1,@xmlDocument FROM CTE_addTask cat;
+
+
+EXEC sp_xml_removedocument @docHandle
+'
+
+exec sp_executesql @sql;	
+END
