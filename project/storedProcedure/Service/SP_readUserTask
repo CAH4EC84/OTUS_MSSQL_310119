@@ -1,0 +1,45 @@
+CREATE PROCEDURE [dbo].[SP_readUserTask]
+--Процедура получает путь к файлу request.xml из таблицы usersReportsTask. Проверяет его на наличие новых заданий.
+	@path nvarchar(255)
+AS
+BEGIN
+
+DECLARE @sql NVARCHAR(MAX);
+
+SET @sql = '
+DECLARE @xmlDocument AS XML;
+SET @xmlDocument = (SELECT * FROM OPENROWSET (BULK ''' + @path + ''',SINGLE_BLOB) as X);
+
+DECLARE @docHandle int
+EXEC sp_xml_preparedocument @docHandle OUTPUT, @xmlDocument
+
+
+IF (
+	(SELECT * FROM OPENXML (@docHandle,''/report'',3) 	WITH ([genarateReport] int) ) = 1 
+	
+	AND 
+	
+	(SELECT id FROM [otusProject].[reports].usersReportsTask 
+	WHERE [requestId] IN  (SELECT * FROM OPENXML (@docHandle,''/report'',3) 	WITH ([requestId] nvarchar(255))
+	)) IS NULL
+)
+	WITH CTE_addTask AS (
+	Select parsedXML.*
+		FROM (
+		SELECT * FROM OPENXML (@docHandle,''/report'',3) 
+			WITH (
+			[genarateReport] int,
+			[requestId] nvarchar(255),
+			[userId] int,
+			[reportId] int
+		) ) as parsedXML
+)
+INSERT INTO [otusProject].[reports].usersReportsTask (userId,reportId,[requestId],recState,taskDetails)
+SELECT cat.userId,cat.[reportId],cat.[requestId],1,@xmlDocument FROM CTE_addTask cat;
+
+
+EXEC sp_xml_removedocument @docHandle
+'
+
+exec sp_executesql @sql;	
+END
