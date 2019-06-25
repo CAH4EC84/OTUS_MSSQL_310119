@@ -1,0 +1,85 @@
+CREATE PROCEDURE [dbo].[SP_checkProductionUnifRule]
+	-- Add the parameters for the stored procedure here
+	@xml XML = null,
+	@taskId bigint
+AS
+BEGIN
+	SET NOCOUNT ON;
+
+	UPDATE reports.usersReportsTask SET  reports.usersReportsTask.startTime= GETDATE() WHERE reports.usersReportsTask.id = @taskId;
+
+--Цепляем внешний файл справочника.
+DECLARE 
+	@exportName nvarchar(max) = NULL,
+	@exportPath nvarchar(max) = NULL,
+	@tmpTable nvarchar(max)= (SELECT NEWID()),
+	@query nvarchar(max),
+	@docHandle int, 
+	@externalFile nvarchar(max) = (
+	SELECT u.path FROM reports.usersReportsTask urt 
+	INNER JOIN reports.users u on urt.userId = u.id
+	WHERE urt.Id = @taskId
+	),
+	@compare nvarchar(max),
+	@compareWith nvarchar(max)
+
+EXEC  sp_xml_preparedocument @docHandle OUTPUT, @xml
+SELECT @externalFile =@externalFile + 'catalogs\'+ checkFileName
+	,@compare = compare
+	,@compareWith = compareWith
+FROM OPENXML (@docHandle,'/report',3)
+	WITH (
+	checkFileName nvarchar(max)  './reportSettings/@FileName',
+	compare nvarchar(max)  './reportSettings/@compare',
+	compareWith nvarchar(max)  './reportSettings/@compareWith'
+)
+EXEC sp_xml_removedocument @docHandle
+
+
+--Считываем внешний файл в таблицу с пользовательскиими заданиями.
+SET @query = 'UPDATE [reports].[usersReportsTask] 
+SET externalData = (SELECT *  FROM OPENROWSET (BULK  '''+@externalFile+''',SINGLE_BLOB) x)
+WHERE id =' +CAST(@taskId AS nvarchar(max))
+
+EXEC (@query)
+
+--Добираем пути для экспорта и имя временной таблицы ((USERNAME_SP_NAME_requestId))
+SELECT TOP 1  
+		   @exportName = u.name+ '_'+ r.spName+'_' + urt.requestId,
+		   @exportPath = u.exportPath
+	FROM reports.usersReportsTask urt
+		 INNER JOIN reports.users u ON u.id = urt.userid
+		 INNER JOIN reports.reports r ON urt.reportId = r.id
+	WHERE urt.id = @taskId
+
+
+--Сравниваем требуемый файл с перекодировкой
+SET @query = '
+DECLARE @docHandle int, @xml xml= (SELECT externalData FROM [reports].[usersReportsTask] WHERE id ='+CAST(@taskId AS nvarchar(max))+')
+EXEC  sp_xml_preparedocument @docHandle OUTPUT, @xml
+SELECT DISTINCT p.*, PV.IntProductName, PV.product_name,PV.form_name
+INTO '+@exportName+'
+FROM (
+	SELECT * FROM OPENXML(@docHandle,''/data-set/record'',3)
+	WITH (
+		id nvarchar(max),
+		ean nvarchar(max),
+		production nvarchar(max),
+		producer nvarchar(max),
+		diler nvarchar(max)
+	)
+) p 
+LEFT JOIN [UnifProductionView] PV ON p.'+@compare+' = PV.'+@compareWith+' 
+ORDER BY 1
+EXEC sp_xml_removedocument @docHandle
+'
+-- meddb.meduni.dbo.[UnifProductionView]
+
+
+SELECT '...SP_checkProductionUnifRule...',@query
+EXEC (@query)
+UPDATE reports.usersReportsTask SET  reports.usersReportsTask.compliteTime= GETDATE() WHERE reports.usersReportsTask.id = @taskId;
+EXEC SP_exportUserReport @exportName,@exportPath,@taskId;
+
+END
+
