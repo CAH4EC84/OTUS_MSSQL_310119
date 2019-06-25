@@ -1,0 +1,25 @@
+CREATE PROCEDURE [dbo].[SP_exportUserReport]
+--Процедура получает Ид отчета, а так же путь и имя файла для экспорта. Выводит данные в XML через BCP (xp_cmdshell)
+	@exportName varchar(255)='',@exportPath nvarchar(255) ='', @taskId bigint
+	
+AS
+BEGIN
+SET NOCOUNT ON;
+SELECT '...SP_exportUserReport...'
+
+
+DECLARE 
+@exportCMD varchar(1000) = 'bcp " Select * from otusProject.dbo.' + @exportName+' FOR XML PATH,ROOT(''report'')" queryout '+@exportPath +  @exportName +'.xml -w -r  -S DBOPER -T'
+SELECT '...SP_exportUserTask...',@exportCMD
+
+DECLARE @result int;  
+EXEC @result = xp_cmdshell @exportCMD
+
+IF (@result <> 0)
+ UPDATE reports.usersReportsTask  SET  reports.usersReportsTask.errorMessage = 'Export error' WHERE reports.usersReportsTask.id = @taskId
+ELSE
+UPDATE reports.usersReportsTask SET  reports.usersReportsTask.exportedTime= GETDATE() WHERE reports.usersReportsTask.id = @taskId;
+
+
+EXEC ('DROP TABLE  otusProject.dbo.'+ @exportName)
+END
