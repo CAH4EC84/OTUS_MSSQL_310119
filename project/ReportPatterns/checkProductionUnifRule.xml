@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<report>
+<!--Секция отвечающая пользователя и тип отчета-->	
+	<userId>1</userId>
+	<reportId>3</reportId>
+	<!--Секция отвечающая за запуск генерации отчета-->
+	<genarateReport>1</genarateReport>
+	<requestId>2019_06_13_1250</requestId>
+<!--Секция отвечающая за внешний файл и сравниваемые поля (IntProductName - унифицированая продукция / name_ext - оригинальная) -->		
+	<reportSettings FileName ="ПродукцияПроизводитель.xml" compare = "production" compareWith="IntProductName"/>
+	<!--<reportSettings FileName ="ПродукцияПроизводитель.xml" compare = "production" compareWith="name_ext"/>-->
+</report>

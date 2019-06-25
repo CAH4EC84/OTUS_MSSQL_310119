@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<report>
+<!--Секция отвечающая пользователя и тип отчета-->	
+	<userId>1</userId>
+	<reportId>1</reportId>
+<!--Секция отвечающая за запуск генерации отчета-->
+	<genarateReport>1</genarateReport>
+	<requestId>2019_06_13_1250</requestId>
+<!--Секция отвечающая фильтры накладываемые при генерации-->		
+	<reportSettings fromDate="20190101" toDate="20190110"/>
+	<filters enabled = "1"/>
+	<vendors list="in (26)"/>
+	<clients list="in (702,5239,2649)"/>
+	<regions list="in (1,4)"/>
+</report>

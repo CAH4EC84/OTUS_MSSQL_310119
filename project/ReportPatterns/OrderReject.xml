@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<report>
+<!--Секция отвечающая пользователя и тип отчета-->	
+	<userId>2</userId>
+	<reportId>2</reportId>
+<!--Секция отвечающая за запуск генерации отчета-->
+	<genarateReport>1</genarateReport>
+	<requestId>2019_06_13_1250</requestId>
+<!--Секция отвечающая фильтры накладываемые при генерации-->		
+	<reportSettings fromDate="20190101" toDate="20190210"/> <!--ГГГГММДД-->
+
+</report>
