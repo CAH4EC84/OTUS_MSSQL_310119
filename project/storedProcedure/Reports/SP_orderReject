@@ -1,0 +1,76 @@
+CREATE PROCEDURE [dbo].[SP_orderReject]
+	@xml XML = null,
+	@taskId bigint
+AS
+BEGIN
+SELECT '...SP_orderReject...'
+UPDATE reports.usersReportsTask SET  reports.usersReportsTask.startTime= GETDATE() WHERE reports.usersReportsTask.id = @taskId;
+		
+SET NOCOUNT ON;
+--Разбираем поступивший XML
+DECLARE
+	@exportName nvarchar(max) = NULL,
+	@exportPath nvarchar(max) = NULL,
+	@docHandle int,
+	@fromDate nvarchar(max)='20190101',
+	@toDate  nvarchar(max)='20190102'
+--Добираем пути для экспорта и имя временной таблицы ((USERNAME_SP_NAME_requestId))
+SELECT TOP 1  
+		   @exportName = u.name+ '_'+ r.spName+'_' + urt.requestId,
+		   @exportPath = u.exportPath
+	FROM reports.usersReportsTask urt
+		 INNER JOIN reports.users u ON u.id = urt.userid
+		 INNER JOIN reports.reports r ON urt.reportId = r.id
+	WHERE urt.id = @taskId
+
+EXEC sp_xml_preparedocument @docHandle OUTPUT, @xml
+SELECT 
+	@fromDate =  NULLIF(tmp.[fromDate],''),
+	@toDate = NULLIF(tmp.[toDate],'')
+FROM (
+	SELECT * FROM OPENXML (@docHandle ,'/report',3) 
+		WITH (
+		[fromDate] datetime './reportSettings/@fromDate',
+		[toDate] datetime './reportSettings/@toDate'
+	)
+) tmp
+EXEC sp_xml_removedocument @docHandle
+
+--Динамический SQL дополняем полученными выше значениями.
+DECLARE @query AS nvarchar(max) = '
+SELECT  CONVERT(nvarchar(27), h.timeOf, 120) AS timeof,  --Так екселю проще с датой.
+       h.num, 
+       apt.name as buyer, 
+       dil.name AS diler, 
+       REPLACE(h.amount,''.'','','') AS docSum,
+       REPLACE ((h.amountInit - h.amount),''.'','','') AS docRejectSum,
+	   net.name AS network, 
+       r.name AS region,
+	   apt.id AS buyerId,
+	   SUM(h.amount) OVER (PARTITION BY apt.id) AS buyerTotalSumm,
+	   SUM (h.amountInit - h.amount) OVER (PARTITION BY apt.id) AS buyerTotalReject,
+	   apt.parentId AS networkId,
+	   SUM(h.amount) OVER (PARTITION BY apt.parentId) AS netTotalSumm,
+	   SUM(h.amountInit - h.amount) OVER (PARTITION BY apt.parentId) AS netTotalReject,
+	   dil.id AS dilerId,
+	   SUM(h.amount) OVER (PARTITION BY dil.Id) AS dilerTotalSumm,
+	   SUM(h.amountInit - h.amount) OVER (PARTITION BY dil.Id) AS dilerTotalReject,
+	   r.id AS regionId,
+	   SUM(h.amount) OVER (PARTITION BY r.id) AS regionTotalSumm,
+	   SUM(h.amountInit - h.amount) OVER (PARTITION BY r.id) AS regionTotalReject,
+	   SUM(h.amount) OVER() as periodTotalSumm,
+	   SUM(h.amountInit - h.amount) OVER() as periodTotalreject
+INTO '+ @exportName + '
+FROM orders.heads h
+     LEFT JOIN clients.users apt ON h.fromUserId = apt.id
+     LEFT JOIN clients.users dil ON h.toUserId = dil.id
+     LEFT JOIN clients.users net ON apt.parentId = net.id
+     LEFT JOIN clients.regions r ON apt.regionsId = r.id 
+WHERE h.timeof between ''' + @fromDate +''' AND ''' +@toDate +''' AND h.recState >=0'
+
+EXEC (@query)
+UPDATE reports.usersReportsTask SET  reports.usersReportsTask.compliteTime= GETDATE() WHERE reports.usersReportsTask.id = @taskId;
+EXEC SP_exportUserReport @exportName,@exportPath,@taskId;
+
+
+END
