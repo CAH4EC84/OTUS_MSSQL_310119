@@ -1,0 +1,58 @@
+CREATE PROCEDURE [dbo].[SP_executeUserTask]
+--Процедура проверяет наличие новых заданий в таблице usersReportsTask. Если сейчас сервер не занят генерацией отчетов (кол-во одновременно генерируемых отчетов можно регулировать)
+-- Определяется какой отчет нужен пользователю, вызывает генерацию соответствующего отчета.
+--Проверяет есть ли долгогенерируемые отчеты и ставит им пометку о необходитмости оптимизации.
+AS
+BEGIN
+SET NOCOUNT ON;
+
+DECLARE @taskId int
+	,@spName NVARCHAR(255)= NULL,@requestId AS nvarchar(255) , @userName nvarchar(255), @exportName NVARCHAR(MAX)= NULL,@exportPath NVARCHAR(MAX)= NULL,
+	@reportSettings XML= NULL
+IF (SELECT count(*) FROM reports.usersReportsTask WHERE reports.usersReportsTask.recState =2 ) = 0
+BEGIN
+	SELECT TOP 1 
+		   @taskId = urt.id,
+		   @userName = u.name,
+		   @spName = r.spName,
+		   @requestId = urt.requestId,		    
+		   @reportSettings = urt.taskDetails, 
+		   @exportPath = u.exportPath
+	FROM reports.usersReportsTask urt
+		 INNER JOIN reports.users u ON u.id = urt.userid
+		 INNER JOIN reports.reports r ON urt.reportId = r.id
+	WHERE u.recState > 0
+		  AND r.recState > 0
+		  AND urt.recState = 1;
+
+	--Если есть новые задания
+
+
+	IF @taskId IS NOT NULL
+	BEGIN
+		UPDATE reports.usersReportsTask SET reports.usersReportsTask.recState = 2	WHERE reports.usersReportsTask.id = @taskId;
+	
+		BEGIN TRY
+			EXECUTE @spName @reportSettings,@taskId;
+			UPDATE reports.usersReportsTask
+			  SET reports.usersReportsTask.recState = 3
+			WHERE reports.usersReportsTask.id = @taskId;
+		END TRY
+		BEGIN CATCH
+			UPDATE reports.usersReportsTask
+			  SET errorMessage = ERROR_MESSAGE()
+			WHERE reports.usersReportsTask.id = @taskId;
+	
+			UPDATE reports.usersReportsTask
+			  SET reports.usersReportsTask.recState = -1
+			WHERE reports.usersReportsTask.id = @taskId;
+		END CATCH;
+	END;
+END
+ELSE 
+	IF (SELECT DATEDIFF(mi,reports.usersReportsTask.startTime,GETDATE()) FROM reports.usersReportsTask WHERE recState = 2) > 30
+	BEGIN
+		UPDATE reports.usersReportsTask SET errorMessage = 'NEED OPTOMIZATION', recState = 4
+	END
+	END;
+
