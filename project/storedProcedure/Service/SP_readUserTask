@@ -1,5 +1,5 @@
 CREATE PROCEDURE [dbo].[SP_readUserTask]
---Процедура получает путь к файлу request.xml из таблицы usersReportsTask. Проверяет его на наличие новых заданий.
+--Процедура получает путь к файлу request.xml из таблицы reports.users,  проверяет его на наличие новых заданий.
 	@path nvarchar(255)
 AS
 BEGIN
